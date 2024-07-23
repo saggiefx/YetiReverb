@@ -15,7 +15,21 @@ YetiReverbAudioProcessorEditor::YetiReverbAudioProcessorEditor (YetiReverbAudioP
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (400, 300);
+    setSize (644, 210);
+
+    addAndMakeVisible(mixKnob);
+    addAndMakeVisible(dampKnob);
+    addAndMakeVisible(sizeKnob);
+    addAndMakeVisible(widthKnob);
+    addAndMakeVisible(lowshelfKnob);
+    addAndMakeVisible(highshelfKnob);
+
+    mixKnob.setAudioParameter(audioProcessor.apvts, ParamIDs::mix);
+    sizeKnob.setAudioParameter(audioProcessor.apvts, ParamIDs::size);
+    dampKnob.setAudioParameter(audioProcessor.apvts, ParamIDs::damp);
+    widthKnob.setAudioParameter(audioProcessor.apvts, ParamIDs::width);
+    lowshelfKnob.setAudioParameter(audioProcessor.apvts, ParamIDs::lowshelf);
+    highshelfKnob.setAudioParameter(audioProcessor.apvts, ParamIDs::highshelf);
 }
 
 YetiReverbAudioProcessorEditor::~YetiReverbAudioProcessorEditor()
@@ -25,16 +39,20 @@ YetiReverbAudioProcessorEditor::~YetiReverbAudioProcessorEditor()
 //==============================================================================
 void YetiReverbAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour (juce::Colours::white);
-    g.setFont (15.0f);
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    g.drawImage(ImageCache::getFromMemory(BinaryData::Base_png, BinaryData::Base_pngSize),getLocalBounds().toFloat());
 }
 
 void YetiReverbAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+
+    int knobSize = 71;
+
+
+    // Set bounds for each knob
+    sizeKnob.setBounds(16, 72, knobSize, knobSize);
+    widthKnob.setBounds(sizeKnob.getRight() + 22, sizeKnob.getY(), knobSize, knobSize);
+    dampKnob.setBounds(widthKnob.getRight() + 5, sizeKnob.getY(), knobSize, knobSize);
+    lowshelfKnob.setBounds(dampKnob.getRight() + 24, 73, knobSize, knobSize);
+    highshelfKnob.setBounds(lowshelfKnob.getRight() + 11, 73, knobSize, knobSize);
+    mixKnob.setBounds(highshelfKnob.getRight()-9, -7, 221, 221);
 }

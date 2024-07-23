@@ -19,9 +19,18 @@ YetiReverbAudioProcessor::YetiReverbAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
 #endif
+    apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
+
+    sizeParam = apvts.getRawParameterValue(ParamIDs::size);
+    dampParam = apvts.getRawParameterValue(ParamIDs::damp);
+    widthParam = apvts.getRawParameterValue(ParamIDs::width);
+    mixParam = apvts.getRawParameterValue(ParamIDs::mix);
+    lowShelfFreqParam = apvts.getRawParameterValue(ParamIDs::lowshelf);
+    highShelfFreqParam = apvts.getRawParameterValue(ParamIDs::highshelf);
+
 }
 
 YetiReverbAudioProcessor::~YetiReverbAudioProcessor()
@@ -95,6 +104,24 @@ void YetiReverbAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+
+    juce::dsp::ProcessSpec spec;
+
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32> (samplesPerBlock);
+    spec.numChannels = static_cast<juce::uint32> (getTotalNumOutputChannels());
+
+    reverb.prepare(spec);
+
+    leftLowShelfFilter.reset();
+    rightLowShelfFilter.reset();
+    leftHighShelfFilter.reset();
+    rightHighShelfFilter.reset();
+
+    leftLowShelfFilter.prepare(spec);
+    rightLowShelfFilter.prepare(spec);
+    leftHighShelfFilter.prepare(spec);
+    rightHighShelfFilter.prepare(spec);
 }
 
 void YetiReverbAudioProcessor::releaseResources()
@@ -144,18 +171,26 @@ void YetiReverbAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
+    updateReverbParams();
+    updateFilterCoefficients();
 
-        // ..do something to the data...
-    }
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> ctx(block);
+
+    reverb.process(ctx);
+
+    auto leftChannelBlock = block.getSingleChannelBlock(0);
+    auto rightChannelBlock = block.getSingleChannelBlock(1);
+
+    juce::dsp::ProcessContextReplacing<float> leftContext(leftChannelBlock);
+    juce::dsp::ProcessContextReplacing<float> rightContext(rightChannelBlock);
+
+    leftLowShelfFilter.process(leftContext);
+    rightLowShelfFilter.process(rightContext);
+
+    leftHighShelfFilter.process(leftContext);
+    rightHighShelfFilter.process(rightContext);
+
 }
 
 //==============================================================================
@@ -181,6 +216,33 @@ void YetiReverbAudioProcessor::setStateInformation (const void* data, int sizeIn
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+void YetiReverbAudioProcessor::updateReverbParams()
+{
+    params.roomSize = sizeParam->load();
+    params.damping = dampParam->load();
+    params.width = widthParam->load();
+    params.wetLevel = mixParam->load();
+    params.dryLevel = 1.0f - mixParam->load();
+
+    reverb.setParameters(params);
+}
+
+void YetiReverbAudioProcessor::updateFilterCoefficients()
+{
+    auto sampleRate = getSampleRate();
+    auto lowShelfGain = juce::Decibels::decibelsToGain(-24.f);
+    auto highShelfGain = juce::Decibels::decibelsToGain(-24.f);
+
+    juce::dsp::IIR::Coefficients<float>::Ptr lowShelfCoefficients = juce::dsp::IIR::Coefficients<float>::makeLowShelf(sampleRate, lowShelfFreqParam->load(), 0.707f, lowShelfGain);
+    juce::dsp::IIR::Coefficients<float>::Ptr highShelfCoefficients = juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRate, highShelfFreqParam->load(), 0.707f, highShelfGain);
+
+    leftLowShelfFilter.coefficients = lowShelfCoefficients;
+    rightLowShelfFilter.coefficients = lowShelfCoefficients;
+
+    leftHighShelfFilter.coefficients = highShelfCoefficients;
+    rightHighShelfFilter.coefficients = highShelfCoefficients;
 }
 
 //==============================================================================
