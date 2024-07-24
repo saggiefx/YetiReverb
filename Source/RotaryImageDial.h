@@ -5,7 +5,7 @@
 class ImageKnobLook : public LookAndFeel_V4
 {
 private:
-    String imageName;
+    String imgName;
     int frameWidth = 0, frameHeight = 0;
     Image dialImg;
 
@@ -14,7 +14,7 @@ public:
 
     void setImage(const String& assetName, int asset_w, int asset_h)
     {
-        imageName = assetName;
+        imgName = assetName;
         frameWidth = asset_w;
         frameHeight = asset_h;
     }
@@ -23,55 +23,16 @@ public:
         float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle,
         Slider& slider) override
     {
-        float centerX = x + width * 0.5f;
-        float centerY = y + height * 0.5f;
-        float radius = jmin(width, height) * 0.4f;
+        int frameIndex = static_cast<int>(sliderPosProportional * 90) % 91;
+        String assetFullName = imgName + "_" + String(frameIndex) + "_png";
+        int size = 0;
+        const char* data = BinaryData::getNamedResource(assetFullName.toUTF8(), size);
 
-        float newWidth = radius * 2;
-        float newHeight = radius * 2;
-        float newX = centerX - radius;
-        float newY = centerY - radius;
-
-        ColourGradient backgroundGradient(Colours::grey, newX, newY, Colours::lightgrey, newX + newWidth, newY + newHeight, false);
-        backgroundGradient.addColour(0.5, Colours::white.withAlpha(0.6f));
-        g.setGradientFill(backgroundGradient);
-        g.fillEllipse(newX, newY, newWidth, newHeight);
-
-        ColourGradient highlightGradient(Colours::white.withAlpha(0.3f), newX, newY, Colours::transparentWhite, newX + newWidth, newY + newHeight, false);
-        g.setGradientFill(highlightGradient);
-        g.fillEllipse(newX, newY, newWidth, newHeight);
-
-        g.setColour(Colours::darkgrey);
-        g.drawEllipse(newX, newY, newWidth, newHeight, 1.0f);
-
-        ColourGradient shadowGradient(Colours::black.withAlpha(0.1f), newX, newY, Colours::transparentBlack, newX + newWidth, newY + newHeight, false);
-        g.setGradientFill(shadowGradient);
-        g.fillEllipse(newX, newY, newWidth, newHeight);
-
-        float angle = rotaryStartAngle + sliderPosProportional * (rotaryEndAngle - rotaryStartAngle);
-        float indicatorLength = radius * 0.7f;
-        float indicatorX = centerX + indicatorLength * std::cos(angle);
-        float indicatorY = centerY + indicatorLength * std::sin(angle);
-
-        g.setColour(Colours::black);
-        g.drawLine(centerX, centerY, indicatorX, indicatorY, 2.0f);
-
-        ColourGradient capGradient(Colours::darkgrey, centerX - 1, centerY - 1, Colours::lightgrey, centerX + 1, centerY + 1, true);
-        g.setGradientFill(capGradient);
-        g.fillEllipse(centerX - 5.0f, centerY - 5.0f, 10.0f, 10.0f);
-
-        g.setColour(Colours::darkgrey);
-        for (int i = 0; i < 10; ++i) {
-            float tickAngle = rotaryStartAngle + i * (rotaryEndAngle - rotaryStartAngle) / 9.0f;
-            float tickStartX = centerX + radius * 0.9f * std::cos(tickAngle);
-            float tickStartY = centerY + radius * 0.9f * std::sin(tickAngle);
-            float tickEndX = centerX + radius * 0.95f * std::cos(tickAngle);
-            float tickEndY = centerY + radius * 0.95f * std::sin(tickAngle);
-            g.drawLine(tickStartX, tickStartY, tickEndX, tickEndY, 1.0f);
+        if (data != nullptr) {
+            dialImg = ImageCache::getFromMemory(data, size);
+            g.drawImage(dialImg, x, y, width, height, 0, 0, frameWidth, frameHeight);
         }
     }
-
-
 };
 
 
